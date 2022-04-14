@@ -33,13 +33,15 @@ parser.add_argument('-fc_hidden2', dest='fc_hidden2', type=int,
 parser.add_argument('-learning_rate', dest='learning_rate',
                     type=float, default=0.01, help='learning rate')
 parser.add_argument('-decay', dest='decay', type=float,
-                    default=0.5, help='learning rate')
+                    default=0.1, help='learning rate')
 parser.add_argument('-batch_size', dest='batch_size',
                     type=int, default=100, help='batch size')
 parser.add_argument('-rotation', dest='rotation',
                     type=int, default=10, help='transform random rotation')
 parser.add_argument('-dropout', dest='dropout', type=float,
-                    default=0.4, help='dropout prob')
+                    default=0.5, help='dropout prob')
+parser.add_argument('-p_huris', dest='p_huris', type=float,
+                    default=0.8, help='p_huris ?????')
 
 parser.add_argument('-activation', dest='activation', type=str,
                     default='relu', help='activation function')
@@ -69,17 +71,19 @@ args = parser.parse_args()
 def _load_data(data_path, batch_size):
     # training data loader
     train_trans = transforms.Compose([transforms.RandomRotation(args.rotation), transforms.RandomHorizontalFlip(),
-                                      transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+                                      transforms.ToTensor(), transforms.Normalize([0.5], [0.5])])
+    # set download to True on initial run
     train_dataset = torchvision.datasets.MNIST(
-        root=data_path, download=False, train=True, transform=train_trans)
+        root=data_path, download=True, train=True, transform=train_trans)
     train_loader = DataLoader(
         dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
 
     # testing data loader
     test_trans = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        [transforms.ToTensor(), transforms.Normalize([0.5], [0.5])])
+    # set download to True on initial run
     test_dataset = torchvision.datasets.MNIST(
-        root=data_path, download=False, train=False, transform=test_trans)
+        root=data_path, download=True, train=False, transform=test_trans)
     test_loader = DataLoader(
         dataset=test_dataset, batch_size=batch_size, shuffle=False, num_workers=8)
 
@@ -126,7 +130,7 @@ def _compute_accuracy(model, test_loader):
     # print accuracy for each class
     for classname, correct_count in correct_pred.items():
         accuracy = 100 * float(correct_count) / total_pred[classname]
-        print(f'Accuracy for class: {classname:5s} is {accuracy:.1f} %')
+        print(f'Accuracy for class: {classname:5s} is {accuracy:.1f}%')
 
     return correct_pred, total_pred
 
@@ -188,8 +192,10 @@ def main():
     # ----------------------------------------
     # model training
     # ----------------------------------------
-    writer = SummaryWriter()
     train_loader, test_loader = _load_data('data', args.batch_size)
+
+    writer = SummaryWriter()
+    writer.close()
 
     if args.mode == 'train':
         epoches = args.num_epoches
@@ -222,6 +228,9 @@ def main():
                 if global_step % 100 == 0:
                     _save_checkpoint(args.ckp_path, model,
                                      optimizer, epoches, global_step)
+
+                # tensorboard
+                writer.add_scalar('Loss/train', loss, global_step)
 
     # ------------------------------------
     # model testing

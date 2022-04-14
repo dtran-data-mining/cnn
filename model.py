@@ -12,16 +12,15 @@ class CNNModel(nn.Module):
 
     def __init__(self, dout_p=0.5, in_size=100, fc_hidden1=100, fc_hidden2=100, out_size=10):
         super(CNNModel, self).__init__()
-        # write the code of model architecture
-        self.mlp = nn.Sequential(nn.Conv2d(in_size, fc_hidden1, kernel_size=3, padding=1),
+        self.fc1 = nn.Sequential(nn.Linear(in_size, fc_hidden1),
                                  nn.ReLU(),
                                  nn.Dropout(p=dout_p),
-                                 nn.Conv2d(fc_hidden1, fc_hidden2,
-                                           kernel_size=3, padding=1),
+                                 nn.Linear(fc_hidden1, fc_hidden2),
                                  nn.ReLU(),
                                  nn.Dropout(p=dout_p),
                                  nn.Linear(fc_hidden2, out_size))
 
     def forward(self, x):
-        y_out = self.mlp(x)
+        x = x.view(x.size(0), -1)
+        y_out = self.fc1(x)
         return y_out
