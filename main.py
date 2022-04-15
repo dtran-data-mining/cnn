@@ -1,17 +1,17 @@
 '''
-Fun: CNN for MNIST classification
+CNN for MNIST Classification
+
+Contributors: Duke Tran, Abdi Hassan
+Date: 4/20/22
+CSCI 420 - Data Mining
 '''
 
-import numpy as np
-import matplotlib.pyplot as plt
 import time
 import argparse
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.optim as optim
-# import queue
-# from util import _create_batch
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
 import torchvision.transforms as transforms
@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader
 from model import CNNModel
 
 
-# input hyper-paras
+# input hyper-parameters
 parser = argparse.ArgumentParser(description='neural networks')
 parser.add_argument('-mode', dest='mode', type=str,
                     default='train', help='train or test')
@@ -65,16 +65,14 @@ parser.add_argument('-ckp_path', dest='ckp_path', type=str,
 args = parser.parse_args()
 
 
-# -------------------------------------------------------
-# data loader
-# -------------------------------------------------------
 def _load_data(data_path, batch_size):
+    '''loads in MNIST dataset, prepares DataLoaders for training and testing'''
     # training data loader
     train_trans = transforms.Compose([transforms.RandomRotation(args.rotation), transforms.RandomHorizontalFlip(),
                                       transforms.ToTensor(), transforms.Normalize([0.5], [0.5])])
     # set download to True on initial run
     train_dataset = torchvision.datasets.MNIST(
-        root=data_path, download=True, train=True, transform=train_trans)
+        root=data_path, download=False, train=True, transform=train_trans)
     train_loader = DataLoader(
         dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
 
@@ -83,60 +81,63 @@ def _load_data(data_path, batch_size):
         [transforms.ToTensor(), transforms.Normalize([0.5], [0.5])])
     # set download to True on initial run
     test_dataset = torchvision.datasets.MNIST(
-        root=data_path, download=True, train=False, transform=test_trans)
+        root=data_path, download=False, train=False, transform=test_trans)
     test_loader = DataLoader(
         dataset=test_dataset, batch_size=batch_size, shuffle=False, num_workers=8)
 
     return train_loader, test_loader
 
 
-def _save_checkpoint(ckp_path, model, optimizer, epoches, global_step):
-    # save checkpoint to ckp_path: 'checkpoint/step_{global_step}.pt'
+def _save_checkpoint(ckp_path, model, optimizer, params):
+    '''saves checkpoint to ckp_path: 'checkpoint/step_{global_step}.pt, stores parameters'''
     checkpoint = {'model_state_dict': model.state_dict(),
                   'optimizer_state_dict': optimizer.state_dict(),
-                  'epoch': epoches,
-                  'global_step': global_step}
+                  'epoch': params['epoches'],
+                  'global_step': params['global_step'],
+                  'learning_rate': params['learning_rate']}
 
     torch.save(checkpoint, ckp_path)
 
 
-def _load_checkpoint(ckp_path, model, optimizer, epoches, global_step):
-    # load checkpoint from ckp_path='checkpoint/step_100.pt'
+def _load_checkpoint(ckp_path, model, optimizer, params):
+    '''loads checkpoint from ckp_path='checkpoint/step_100.pt, loads in parameters'''
     checkpoint = torch.load(ckp_path)
 
     # load parameters (W and b) to models
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    epoches = checkpoint['epoch']
-    global_step = checkpoint['global_step']
+    params['epoches'] = checkpoint['epoch']
+    params['global_step'] = checkpoint['global_step']
+    params['learning_rate'] = checkpoint['learning_rate']
 
 
 def _compute_accuracy(model, test_loader):
-    correct_pred = {classname: 0 for classname in range(9)}
-    total_pred = {classname: 0 for classname in range(9)}
+    '''computes accuracy for each class (digits 0-9)'''
+    correct_preds = {num_class: 0 for num_class in range(10)}
+    total_preds = {num_class: 0 for num_class in range(10)}
 
-    # again no gradients needed
+    # no gradient needed
     with torch.no_grad():
         for data in test_loader:
-            images, y_labels = data
-            outputs = model(images)
+            x_data, y_labels = data
+            outputs = model(x_data)
             _, y_preds = torch.max(outputs, 1)
             # collect the correct predictions for each class
-            for y_label, y_pred in zip(y_labels, y_preds):
-                if y_label == y_pred:
-                    correct_pred[y_label] += 1
-                total_pred[y_label] += 1
+            for y_pred, y_label in zip(y_preds, y_labels):
+                if y_pred == y_label:
+                    correct_preds[y_label.item()] += 1
+                total_preds[y_label.item()] += 1
 
     # print accuracy for each class
-    for classname, correct_count in correct_pred.items():
-        accuracy = 100 * float(correct_count) / total_pred[classname]
-        print(f'Accuracy for class: {classname:5s} is {accuracy:.1f}%')
+    for classname, correct_count in correct_preds.items():
+        accuracy = 100 * float(correct_count) / total_preds[classname]
+        print(f'accuracy for class \'{classname}\': {accuracy:.3f}%')
 
-    return correct_pred, total_pred
+    return correct_preds, total_preds
 
 
 def adjust_learning_rate(learning_rate, optimizer, epoch, decay):
-    '''Sets the learning rate to the initial LR decayed by 1/10 every args.lr epochs'''
+    '''sets the learning rate to the initial LR decayed by 1/8 every args.lr epochs'''
     decay_t = 0
     if (epoch > 5):
         decay_t += 1
@@ -144,7 +145,9 @@ def adjust_learning_rate(learning_rate, optimizer, epoch, decay):
         decay_t += 1
     if (epoch > 20):
         decay_t += 1
-    learning_rate *= decay ** decay_t
+    # stop decaying after epoch 30
+    if (epoch < 30):
+        learning_rate *= decay ** decay_t
 
     for param_group in optimizer.param_groups:
         param_group['lr'] = learning_rate
@@ -152,6 +155,7 @@ def adjust_learning_rate(learning_rate, optimizer, epoch, decay):
 
 
 def _test_model(model, device, test_loader):
+    '''tests model against dataset, returns accuracy percentage'''
     correct, total = 0, 0
     with torch.no_grad():
         for _, (x_batch, y_labels) in enumerate(test_loader):
@@ -166,6 +170,7 @@ def _test_model(model, device, test_loader):
 
 
 def main():
+    '''sets up script and device, loads in data, trains/tests'''
     # -------------------------------------------------------
     # decide to use gpu or cpu
     # -------------------------------------------------------
@@ -177,8 +182,14 @@ def main():
     # -------------------------------------------------------
     # model initialization
     # -------------------------------------------------------
-    model = CNNModel(dout_p=args.dropout, in_size=28*28,
-                     fc_hidden1=args.fc_hidden1, fc_hidden2=args.fc_hidden2, out_size=10)
+    model = CNNModel(
+        dout_p=args.dropout,
+        channel_out1=args.channel_out1,
+        channel_out2=args.channel_out2,
+        fc_hidden1=args.fc_hidden1,
+        fc_hidden2=args.fc_hidden2,
+        out_size=10
+    )
     model.to(device)
 
     # ----------------------------------------
@@ -189,28 +200,32 @@ def main():
     # cross entropy loss
     loss_fn = nn.CrossEntropyLoss()
 
-    # ----------------------------------------
-    # model training
-    # ----------------------------------------
     train_loader, test_loader = _load_data('data', args.batch_size)
 
     writer = SummaryWriter()
     writer.close()
 
+    params = {
+        'epoches': args.num_epoches,
+        'global_step': 0,
+        'learning_rate': args.learning_rate
+    }
+
+    # ----------------------------------------
+    # model training
+    # ----------------------------------------
     if args.mode == 'train':
-        epoches = args.num_epoches
-        global_step = 0
-        # load checkpoint
-        _load_checkpoint(args.ckp_path, model, optimizer, epoches, global_step)
+        # load checkpoint (only if checkpoint file exists and is populated)
+        # _load_checkpoint(args.ckp_path, model, optimizer, params)
 
         model = model.train()
 
-        for epoch in range(epoches):
+        for epoch in range(params['epoches']):
             adjust_learning_rate(args.learning_rate,
                                  optimizer, epoch, args.decay)
 
             for _, (x_batch, y_labels) in enumerate(train_loader):
-                global_step += 1
+                params['global_step'] += 1
                 x_batch, y_labels = Variable(x_batch).to(
                     device), Variable(y_labels).to(device)
 
@@ -225,27 +240,32 @@ def main():
                 optimizer.step()
 
                 # save checkpoint
-                if global_step % 100 == 0:
-                    _save_checkpoint(args.ckp_path, model,
-                                     optimizer, epoches, global_step)
+                if params['global_step'] % 100 == 0:
+                    _save_checkpoint(args.ckp_path, model, optimizer, params)
 
                 # tensorboard
-                writer.add_scalar('Loss/train', loss, global_step)
+                writer.add_scalar('loss/train', loss, params['global_step'])
 
     # ------------------------------------
     # model testing
     # ------------------------------------
     elif args.mode == 'test':
+        _load_checkpoint(args.ckp_path, model, optimizer, params)
+
         model.eval()
+
         accuracy = _test_model(model, device, test_loader)
-        print(f'accuracy: {accuracy}%')
+        print(f'testing accuracy: {accuracy:.3f}%')
+
+        _compute_accuracy(model, test_loader)
 
     else:
         print(f'invalid mode: {args.mode}, please enter \'train\' or \'test\'')
 
 
 if __name__ == '__main__':
+    '''module entry point'''
     time_start = time.time()
     main()
     time_end = time.time()
-    print('running time: ', (time_end - time_start)/60.0, 'mins')
+    print(f'running time: {((time_end - time_start)/60.0):.5f} mins')
