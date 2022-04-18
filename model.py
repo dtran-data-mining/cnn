@@ -70,6 +70,13 @@ class CNNModel(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
+        '''
+            (28 - 5) / 1 + 1 = 24
+            (24 - 2) / 2 + 1 = 12
+            (12 - 5) / 1 + 1 = 8
+            (8 - 2) / 2 + 1 = 4
+        '''
+
         # fully connected layer with 3 sequential nodes
         self.fc1 = nn.Sequential(
             nn.Linear(channel_out2 * 4 * 4, fc_hidden1),

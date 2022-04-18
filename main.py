@@ -13,6 +13,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.optim as optim
 import torchvision
+# tensorboard --logdir=runs
 from torch.utils.tensorboard import SummaryWriter
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
@@ -40,13 +41,9 @@ parser.add_argument('-rotation', dest='rotation',
                     type=int, default=10, help='transform random rotation')
 parser.add_argument('-dropout', dest='dropout', type=float,
                     default=0.5, help='dropout prob')
-parser.add_argument('-p_huris', dest='p_huris', type=float,
-                    default=0.8, help='p_huris ?????')
 
 parser.add_argument('-activation', dest='activation', type=str,
                     default='relu', help='activation function')
-parser.add_argument('-MC', dest='MC', type=int, default=10,
-                    help='number of monte carlo')
 parser.add_argument('-channel_out1', dest='channel_out1',
                     type=int, default=64, help='number of channels')
 parser.add_argument('-channel_out2', dest='channel_out2',
@@ -92,7 +89,7 @@ def _save_checkpoint(ckp_path, model, optimizer, params):
     '''saves checkpoint to ckp_path: 'checkpoint/step_{global_step}.pt, stores parameters'''
     checkpoint = {'model_state_dict': model.state_dict(),
                   'optimizer_state_dict': optimizer.state_dict(),
-                  'epoch': params['epoches'],
+                  'epoch': params['epoch'],
                   'global_step': params['global_step'],
                   'learning_rate': params['learning_rate']}
 
@@ -100,18 +97,23 @@ def _save_checkpoint(ckp_path, model, optimizer, params):
 
 
 def _load_checkpoint(ckp_path, model, optimizer, params):
-    '''loads checkpoint from ckp_path='checkpoint/step_100.pt, loads in parameters'''
+    '''loads checkpoint from ckp_path='checkpoint/step_{global_step}.pt, loads in parameters'''
     checkpoint = torch.load(ckp_path)
 
     # load parameters (W and b) to models
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    params['epoches'] = checkpoint['epoch']
+    params['epoch'] = checkpoint['epoch']
     params['global_step'] = checkpoint['global_step']
     params['learning_rate'] = checkpoint['learning_rate']
 
 
-def _compute_accuracy(model, test_loader):
+def _compute_accuracy(y_preds, y_labels):
+    '''computes accuracy for y predictions of given batch compared to y labels'''
+    return (y_preds == y_labels).sum().item()
+
+
+def _compute_class_accuracy(model, test_loader):
     '''computes accuracy for each class (digits 0-9)'''
     correct_preds = {num_class: 0 for num_class in range(10)}
     total_preds = {num_class: 0 for num_class in range(10)}
@@ -163,7 +165,7 @@ def _test_model(model, device, test_loader):
                 device), Variable(y_labels).to(device)
             y_out = model(x_batch)
             _, y_preds = torch.max(y_out.data, 1)
-            correct += (y_preds == y_labels).sum().item()
+            correct += _compute_accuracy(y_preds, y_labels)
             total += y_labels.size(0)
 
     return correct / total * 100
@@ -206,7 +208,7 @@ def main():
     writer.close()
 
     params = {
-        'epoches': args.num_epoches,
+        'epoch': 0,
         'global_step': 0,
         'learning_rate': args.learning_rate
     }
@@ -216,14 +218,16 @@ def main():
     # ----------------------------------------
     if args.mode == 'train':
         # load checkpoint (only if checkpoint file exists and is populated)
-        # _load_checkpoint(args.ckp_path, model, optimizer, params)
+        _load_checkpoint(args.ckp_path, model, optimizer, params)
 
-        model = model.train()
+        model.train()
 
-        for epoch in range(params['epoches']):
-            adjust_learning_rate(args.learning_rate,
+        for epoch in range(params['epoch'], args.num_epoches):
+            params['epoch'] = epoch
+            adjust_learning_rate(params['learning_rate'],
                                  optimizer, epoch, args.decay)
 
+            sum_loss = 0
             for _, (x_batch, y_labels) in enumerate(train_loader):
                 params['global_step'] += 1
                 x_batch, y_labels = Variable(x_batch).to(
@@ -232,6 +236,7 @@ def main():
                 # train model
                 y_preds = model(x_batch)
                 loss = loss_fn(y_preds, y_labels)
+                sum_loss += loss
 
                 # back prop
                 optimizer.zero_grad()
@@ -243,8 +248,8 @@ def main():
                 if params['global_step'] % 100 == 0:
                     _save_checkpoint(args.ckp_path, model, optimizer, params)
 
-                # tensorboard
-                writer.add_scalar('loss/train', loss, params['global_step'])
+            # plot loss using tensorboard
+            writer.add_scalar('loss/train', sum_loss / args.batch_size, epoch)
 
     # ------------------------------------
     # model testing
@@ -257,8 +262,8 @@ def main():
         accuracy = _test_model(model, device, test_loader)
         print(f'testing accuracy: {accuracy:.3f}%')
 
-        _compute_accuracy(model, test_loader)
-
+        # test classification accuracy for each class
+        # _compute_class_accuracy(model, test_loader)
     else:
         print(f'invalid mode: {args.mode}, please enter \'train\' or \'test\'')
 
