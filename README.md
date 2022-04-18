@@ -28,7 +28,7 @@ Provided within the script are two commands to initialize a virtual environment.
 
    You could also name it whatever you want, but make sure to modify the shell script to reflect its name.
 
-2. Install the required [package dependencies](https://github.com/dtran421/data-mining--cnn#package-dependencies) for the program.
+2. Install the required [**package dependencies**](https://github.com/dtran421/data-mining--cnn#package-dependencies) for the program.
   
 3. Change the path of `conda.sh` to the appropriate path for your machine. It should be located within the directory where anaconda was installed.
 
@@ -39,7 +39,7 @@ Provided within the script are two commands to initialize a virtual environment.
 
 ### Setting the Options
 
-The main script of the program has a large array of command-line options that can be tweaked to your liking in order to influence the composition and training process of the CNN model. Within the shell script, you can make any adjustments to the program options as you desire. To learn more about the options, please see the [**options**](https://github.com/dtran421/data-mining--cnn/edit/master/README.md#program-options) section.
+The main script of the program has a large array of command-line options that can be tweaked to your liking in order to influence the composition and training process of the CNN model. Within the shell script, you can make any adjustments to the program options as you desire. To learn more about the options, please see the [**options**](https://github.com/dtran421/data-mining--cnn#program-options) section.
 
 > The most important option to note is the `mode` option, which is set to *test* by default. If you want to train the model from scratch, then set the option to *train*.
 
