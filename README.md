@@ -28,7 +28,7 @@ Provided within the script are two commands to initialize a virtual environment.
 
    You could also name it whatever you want, but make sure to modify the shell script to reflect its name.
 
-2. Install the required [package dependencies](https://github.com/dtran421/data-mining--cnn/edit/master/README.md#package-dependencies) for the program.
+2. Install the required [package dependencies](https://github.com/dtran421/data-mining--cnn#package-dependencies) for the program.
   
 3. Change the path of `conda.sh` to the appropriate path for your machine. It should be located within the directory where anaconda was installed.
 
