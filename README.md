@@ -28,11 +28,7 @@ Provided within the script are two commands to initialize a virtual environment.
 
    You could also name it whatever you want, but make sure to modify the shell script to reflect its name.
 
-2. Install the required package dependencies for the program using the following command:
-
-   ```shell
-   conda install --file requirements.txt
-   ```
+2. Install the required [package dependencies](https://github.com/dtran421/data-mining--cnn/edit/master/README.md#package-dependencies) for the program.
   
 3. Change the path of `conda.sh` to the appropriate path for your machine. It should be located within the directory where anaconda was installed.
 
@@ -62,6 +58,7 @@ With that done, now you're ready to start the program. Navigate to the program d
   sh ./run.sh
 ```
 
+
 ## Program Options
 
 The default settings for the options are specified within the `main.py` file of the program.
@@ -80,6 +77,13 @@ The default settings for the options are specified within the `main.py` file of 
 | rotation      | transform random rotation         | int    | *10*         |
 | fc_hidden1    | dim of neurons for linear layer 1 |   int  | *100*        |
 | fc_hidden2    | dim of neurons for linear layer 1 | int    | *100*        |
+
+
+## Additional Resources
+
+- [Training a CNN](https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html)
+- [PyTorch CNN with MNIST](https://medium.com/@nutanbhogendrasharma/pytorch-convolutional-neural-network-with-mnist-dataset-4e8a4265e118)
+- [CNN Layer Output Channels](https://discuss.pytorch.org/t/runtimeerror-mat1-and-mat2-shapes-cannot-be-multiplied-64x13056-and-153600x2048/101315)
 
 
 ## Package Dependencies
@@ -102,3 +106,4 @@ The `main.py` script makes use of the following packages:
 * [torchvision](https://pytorch.org/vision/stable/index.html)
   * [torchvision.transforms](https://pytorch.org/vision/stable/transforms.html)
   * [torchvision.datasets](https://pytorch.org/vision/stable/datasets.html)
+* [tensorboard](https://pypi.org/project/tensorboard/)
