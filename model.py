@@ -20,9 +20,9 @@ class CNNModel(nn.Module):
             - Batch normalization
             - Dropout
             - Max pooling
-        - Fully connected layer
-            - 3 sequential linear nodes
-            - Dropout for all 3 nodes
+        - Fully connected layers
+            - 2 hidden linear layers
+            - Dropout for all 2 layers
         - Output layer
             - 10 channels (with classification probabilities for 10 digits, 0-9)
 
@@ -31,8 +31,8 @@ class CNNModel(nn.Module):
         - dout_p: dropout probability
         - channel_out1: num output channels for convolutional layer 1
         - channel_out2: num output channels for convolutional layer 2
-        - fc_hidden1: num output channels for hidden node 1 of fully connected layer
-        - fc_hidden2: num output channels for hidden node 2 of fully connected layer
+        - fc_hidden1: num output channels for hidden fc linear layer 1
+        - fc_hidden2: num output channels for hidden fc linear lyaer 2
         - out_size: num of output channels (10 default for MNIST dataset)
     '''
 
@@ -70,15 +70,8 @@ class CNNModel(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
-        '''
-            (28 - 5) / 1 + 1 = 24
-            (24 - 2) / 2 + 1 = 12
-            (12 - 5) / 1 + 1 = 8
-            (8 - 2) / 2 + 1 = 4
-        '''
-
-        # fully connected layer with 3 sequential nodes
-        self.fc1 = nn.Sequential(
+        # 2 fully connected linear layers
+        self.fc = nn.Sequential(
             nn.Linear(channel_out2 * 4 * 4, fc_hidden1),
             nn.ReLU(),
             nn.Dropout(p=dout_p),
@@ -95,5 +88,5 @@ class CNNModel(nn.Module):
 
         # flatten the convolution results to (batch_size, n)
         x = torch.flatten(x, 1)
-        y_out = self.fc1(x)
+        y_out = self.fc(x)
         return y_out

@@ -61,6 +61,8 @@ parser.add_argument('-ckp_path', dest='ckp_path', type=str,
 
 args = parser.parse_args()
 
+MNIST_SIZE = 60000
+
 
 def _load_data(data_path, batch_size):
     '''loads in MNIST dataset, prepares DataLoaders for training and testing'''
@@ -143,7 +145,7 @@ def adjust_learning_rate(learning_rate, optimizer, epoch, decay):
     decay_t = 0
     if (epoch > 5):
         decay_t += 1
-    if (epoch >= 10):
+    if (epoch > 10):
         decay_t += 1
     if (epoch > 20):
         decay_t += 1
@@ -217,10 +219,10 @@ def main():
     # model training
     # ----------------------------------------
     if args.mode == 'train':
+        model.train()
+
         # load checkpoint (only if checkpoint file exists and is populated)
         _load_checkpoint(args.ckp_path, model, optimizer, params)
-
-        model.train()
 
         for epoch in range(params['epoch'], args.num_epoches):
             params['epoch'] = epoch
@@ -249,21 +251,23 @@ def main():
                     _save_checkpoint(args.ckp_path, model, optimizer, params)
 
             # plot loss using tensorboard
-            writer.add_scalar('loss/train', sum_loss / args.batch_size, epoch)
+            writer.add_scalar('loss/train', sum_loss /
+                              (MNIST_SIZE / args.batch_size), epoch)
 
     # ------------------------------------
     # model testing
     # ------------------------------------
     elif args.mode == 'test':
-        _load_checkpoint(args.ckp_path, model, optimizer, params)
-
         model.eval()
+
+        _load_checkpoint(args.ckp_path, model, optimizer, params)
 
         accuracy = _test_model(model, device, test_loader)
         print(f'testing accuracy: {accuracy:.3f}%')
 
         # test classification accuracy for each class
         # _compute_class_accuracy(model, test_loader)
+
     else:
         print(f'invalid mode: {args.mode}, please enter \'train\' or \'test\'')
 
