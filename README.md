@@ -1,6 +1,6 @@
 # data-mining--cnn
 
-**Assignment 2 - Classification and Clustering**
+**Assignment 3 - Convolutional Neural Networks (CNNs)**
 
 This assignment focuses on the implementation of a convolutional neural network (CNN) using [PyTorch](https://pytorch.org/) and classification of data from the MNIST dataset, which consists of 60,000 small square 28×28 pixel grayscale images of handwritten single digits between 0 and 9.
 
